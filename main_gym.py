@@ -21,7 +21,7 @@ alpha = 0.0005
 agent = Agent(
     n_actions=env.action_space.n,
     sequence_size=sequence_size,
-    alpha=alpha,
+    lr=alpha,
     n_epochs=n_epochs,
     inputs=env.observation_space.shape[0],
 )
@@ -35,7 +35,9 @@ avg_score = 0
 n_steps = 0
 
 for i in range(n_games):
-    if render_interval > 0:
+    if i == n_games - 1:
+        render = True
+    elif render_interval > 0:
         render = (i + 1) % render_interval == 0
     else:
         render = False

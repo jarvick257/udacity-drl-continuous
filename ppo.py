@@ -53,7 +53,7 @@ class ActorNetwork(nn.Module):
         self,
         n_actions,
         inputs,
-        alpha,
+        lr,
         fc1_dims=256,
         chkptr_dir="tmp/ppo",
     ):
@@ -65,7 +65,7 @@ class ActorNetwork(nn.Module):
             nn.Linear(fc1_dims, n_actions),
             nn.Softmax(dim=-1),
         )
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
     def forward(self, state):
         x = self.net(state)
@@ -80,7 +80,7 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, inputs, alpha, fc1_dims=256, fc2_dims=256, chkptr_dir="tmp/ppo"):
+    def __init__(self, inputs, lr, fc1_dims=256, fc2_dims=256, chkptr_dir="tmp/ppo"):
         super(CriticNetwork, self).__init__()
         self.checkpoint_file = os.path.join(chkptr_dir, "critic_torch_ppo")
         self.critic = nn.Sequential(
@@ -90,7 +90,7 @@ class CriticNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(fc2_dims, 1),
         )
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
     def forward(self, state):
         value = self.critic(state)
@@ -109,7 +109,7 @@ class Agent:
         n_actions,
         inputs,
         gamma=0.99,
-        alpha=0.0003,
+        lr=0.0003,
         gae_lambda=0.95,
         policy_clip=0.2,
         sequence_size=64,
@@ -121,8 +121,8 @@ class Agent:
         self.n_epochs = n_epochs
 
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
-        self.actor = ActorNetwork(n_actions, inputs, alpha).to(self.device)
-        self.critic = CriticNetwork(inputs, alpha).to(self.device)
+        self.actor = ActorNetwork(n_actions, inputs, lr).to(self.device)
+        self.critic = CriticNetwork(inputs, lr).to(self.device)
         self.memory = PPOMemory(sequence_size)
 
     def remember(self, state, action, probs, vals, reward, done):
