@@ -1,10 +1,11 @@
 import pdb
 import os
 import torch as T
+import torch.nn.functional as F
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 
 
 class PPOMemory:
@@ -54,22 +55,22 @@ class ActorNetwork(nn.Module):
         n_actions,
         inputs,
         lr,
-        fc1_dims=256,
+        fc1_dims=128,
         chkptr_dir="tmp/ppo",
     ):
         super(ActorNetwork, self).__init__()
         self.checkpoint_file = os.path.join(chkptr_dir, "actor_torch_ppo")
-        self.net = nn.Sequential(
-            nn.Linear(inputs, fc1_dims),
-            nn.ReLU(),
-            nn.Linear(fc1_dims, n_actions),
-            nn.Softmax(dim=-1),
-        )
+        self.fc1 = nn.Linear(inputs, fc1_dims)
+        self.mu = nn.Linear(fc1_dims, n_actions)
+        self.sigma = nn.Linear(fc1_dims, n_actions)
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
     def forward(self, state):
-        x = self.net(state)
-        dist = Categorical(x)
+        x = F.relu(self.fc1(state))
+        sigma = F.softplus(self.sigma(x))
+        mu = F.softsign(self.mu(x))
+        dist = Normal(mu, sigma)
+        print(sigma, mu)
         return dist
 
     def save_checkpoint(self):
@@ -120,7 +121,8 @@ class Agent:
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
 
-        self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
+        self.device = T.device("cpu")
+        # self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
         self.actor = ActorNetwork(n_actions, inputs, lr).to(self.device)
         self.critic = CriticNetwork(inputs, lr).to(self.device)
         self.memory = PPOMemory(sequence_size)
@@ -139,14 +141,15 @@ class Agent:
         self.critic.load_checkpoint()
 
     def choose_action(self, observation):
-        # pdb.set_trace()
         state = T.tensor([observation], dtype=T.float).to(self.device)
         dist = self.actor(state)
         value = self.critic(state)
         action = dist.sample()
-        action_prob = T.squeeze(dist.log_prob(action)).item()
-        action = T.squeeze(action).item()
-        value = T.squeeze(value).item()
+        # pdb.set_trace()
+        action_prob = T.squeeze(dist.log_prob(action)).detach().cpu().numpy()
+        action = T.clamp(action, -1.0, 1.0)
+        action = T.squeeze(action).detach().detach().cpu().numpy()
+        value = T.squeeze(value).detach().detach().cpu().numpy()
         return action, action_prob, value
 
     def learn(self):
@@ -182,15 +185,16 @@ class Agent:
                 actions = T.tensor(action_arr[batch]).to(self.device)
                 dist = self.actor(states)
                 critic_value = self.critic(states)
-                critic_value = T.squeeze(critic_value)
+                pdb.set_trace()
                 new_probs = dist.log_prob(actions)
-                prob_ratio = new_probs.exp() / old_probs.exp()
-                weighted_probs = advantage[batch] * prob_ratio
+                prob_ratio = new_probs.exp() / old_probs.exp()  # .mean(dim=1)
+                weighted_probs = prob_ratio * advantage[batch]
                 weighted_clipped_probs = (
                     T.clamp(prob_ratio, 1 - self.policy_clip, 1 + self.policy_clip)
                     * advantage[batch]
                 )
-                actor_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
+                actor_loss = -T.min(weighted_probs, weighted_clipped_probs)
+                actor_loss = actor_loss.mean(dim=0)
                 returns = advantage[batch] + values[batch]
                 critic_loss = (returns - critic_value) ** 2
                 critic_loss = critic_loss.mean()
