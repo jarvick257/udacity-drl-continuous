@@ -1,10 +1,5 @@
-import pdb
-import os
 import torch as T
 import numpy as np
-import torch.nn as nn
-import torch.optim as optim
-from torch.distributions.categorical import Categorical
 
 from memory import PPOMemory
 
@@ -35,13 +30,13 @@ class Agent:
         self.memory.store_memory(state, action, probs, vals, reward, done)
 
     def choose_action(self, observation):
-        # pdb.set_trace()
         state = T.tensor([observation], dtype=T.float).to(self.device)
         dist, value = self.model(state)
         action = dist.sample()
+        action = T.clamp(action, -1.0, 1.0)
+        action = T.squeeze(action).detach().cpu().numpy()
         action_prob = T.squeeze(dist.log_prob(action)).item()
-        action = T.squeeze(action).item()
-        value = T.squeeze(value).item()
+        value = T.squeeze(value).item().cpu().numpy()
         return action, action_prob, value
 
     def learn(self):
@@ -56,7 +51,6 @@ class Agent:
         ) = self.memory.generate_batches()
         values = val_arr
         advantage = np.zeros(len(reward_arr), dtype=np.float32)
-        # pdb.set_trace()
         for t in range(len(reward_arr) - 1):
             discount = 1
             a_t = 0
@@ -78,7 +72,7 @@ class Agent:
                 dist, critic_value = self.model(states)
                 critic_value = T.squeeze(critic_value)
                 new_probs = dist.log_prob(actions)
-                prob_ratio = new_probs.exp() / old_probs.exp()
+                prob_ratio = (new_probs.exp() / old_probs.exp()).mean(dim=1)
                 weighted_probs = advantage[batch] * prob_ratio
                 weighted_clipped_probs = (
                     T.clamp(prob_ratio, 1 - self.policy_clip, 1 + self.policy_clip)
