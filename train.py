@@ -1,9 +1,11 @@
+import copy
+
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
 
 import torch.multiprocessing as mp
-import copy
+import torch as T
 from torch.optim import Adam
 
 from model import PPOModel
@@ -11,12 +13,13 @@ from agent import Agent
 from utils import plot_learning_curve
 
 
-def train(id_, model, env, n_games, report_q):
+def train(id_, model, device, env, n_games, report_q):
     N = 20
 
     optim = Adam(model.parameters(), lr=0.0005)
     agent = Agent(
         model=model,
+        device=device,
         optimizer=optim,
         sequence_size=5,
         n_epochs=4,
@@ -45,18 +48,24 @@ def train(id_, model, env, n_games, report_q):
 
 if __name__ == "__main__":
     env = gym.make("LunarLander-v2")
-    n_games = 300
-    n_workers = 4
+    n_games = 1200
+    n_workers = 8
+
+    device = T.device("cpu" if not T.cuda.is_available() else "cuda:0")
 
     model = PPOModel(
         n_actions=env.action_space.n,
         n_inputs=env.observation_space.shape[0],
     )
+    model.to(device)
     model.share_memory()
     report_q = mp.Queue()
 
     workers = [
-        mp.Process(target=train, args=(i, model, copy.deepcopy(env), n_games, report_q))
+        mp.Process(
+            target=train,
+            args=(i, model, device, copy.deepcopy(env), n_games // n_workers, report_q),
+        )
         for i in range(n_workers)
     ]
 

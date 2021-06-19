@@ -14,6 +14,7 @@ class Agent:
         self,
         model,
         optimizer,
+        device,
         gamma=0.99,
         gae_lambda=0.95,
         policy_clip=0.2,
@@ -25,6 +26,7 @@ class Agent:
         self.policy_clip = policy_clip
         self.n_epochs = n_epochs
 
+        self.device = device
         self.model = model
         self.optim = optimizer
         self.memory = PPOMemory(sequence_size)
@@ -34,7 +36,7 @@ class Agent:
 
     def choose_action(self, observation):
         # pdb.set_trace()
-        state = T.tensor([observation], dtype=T.float)
+        state = T.tensor([observation], dtype=T.float).to(self.device)
         dist, value = self.model(state)
         action = dist.sample()
         action_prob = T.squeeze(dist.log_prob(action)).item()
@@ -70,9 +72,9 @@ class Agent:
         values = T.tensor(values)
         for epoch in range(self.n_epochs):
             for batch in batches:
-                states = T.tensor(state_arr[batch], dtype=T.float)
-                old_probs = T.tensor(old_prob_arr[batch])
-                actions = T.tensor(action_arr[batch])
+                states = T.tensor(state_arr[batch], dtype=T.float).to(self.device)
+                old_probs = T.tensor(old_prob_arr[batch]).to(self.device)
+                actions = T.tensor(action_arr[batch]).to(self.device)
                 dist, critic_value = self.model(states)
                 critic_value = T.squeeze(critic_value)
                 new_probs = dist.log_prob(actions)

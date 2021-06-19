@@ -15,11 +15,10 @@ class PPOModel(nn.Module):
     ):
         super(PPOModel, self).__init__()
         self.checkpoint_file = os.path.join(chkptr_dir, "actor_torch_ppo")
-        hidden_dims = 128
         self.fc1 = nn.Linear(n_inputs, 256)
-        self.fc2 = nn.Linear(256, hidden_dims)
+        self.fc2 = nn.Linear(256, 128)
         self.actor = nn.Linear(256, n_actions)
-        self.critic = nn.Linear(hidden_dims, 1)
+        self.critic = nn.Linear(128, 1)
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
