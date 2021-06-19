@@ -38,10 +38,10 @@ class Agent:
         state = T.tensor([observation], dtype=T.float).to(self.device)
         dist, value = self.model(state)
         action = dist.sample()
+        action_prob = T.squeeze(dist.log_prob(action)).detach().cpu().numpy()
         action = T.clamp(action, -1.0, 1.0)
         action = T.squeeze(action).detach().cpu().numpy()
-        action_prob = T.squeeze(dist.log_prob(action)).item()
-        value = T.squeeze(value).item().cpu().numpy()
+        value = T.squeeze(value).item()
         return action, action_prob, value
 
     def sync_model(self):
@@ -77,7 +77,7 @@ class Agent:
                 discount *= self.gamma * self.gae_lambda
             advantage[t] = a_t
         advantage = T.tensor(advantage)
-        values = T.tensor(values)
+        values = T.tensor(values, dtype=T.float32)
         for epoch in range(self.n_epochs):
             for batch in batches:
                 states = T.tensor(state_arr[batch], dtype=T.float).to(self.device)

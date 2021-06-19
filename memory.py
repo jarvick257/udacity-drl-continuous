@@ -40,3 +40,17 @@ class PPOMemory:
         self.actions = []
         self.rewards = []
         self.dones = []
+
+
+if __name__ == "__main__":
+    import pdb
+    from unityagents import UnityEnvironment
+
+    env = UnityEnvironment("./Reacher_Linux/Reacher.x86_64")
+    brain_name = env.brain_names[0]
+    brain = env.brains[brain_name]
+    states = []
+    for i in range(10):
+        env_info = env.reset(train_mode=True)[brain_name]
+        states.append(env_info.vector_observations)
+    pdb.set_trace()

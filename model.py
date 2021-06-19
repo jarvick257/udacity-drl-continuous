@@ -2,7 +2,7 @@ import os
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 
 
 class PPOModel(nn.Module):
@@ -16,13 +16,15 @@ class PPOModel(nn.Module):
         self.checkpoint_file = os.path.join(chkptr_dir, "actor_torch_ppo")
         self.fc1 = nn.Linear(n_inputs, 256)
         self.fc2 = nn.Linear(256, 128)
-        self.actor = nn.Linear(256, n_actions)
+        self.mu = nn.Linear(256, n_actions)
+        self.sigma = nn.Linear(256, n_actions)
         self.critic = nn.Linear(128, 1)
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
-        dist = F.softmax(self.actor(x), dim=1)
-        dist = Categorical(dist)
+        sigma = F.softplus(self.sigma(x))
+        mu = F.softsign(self.mu(x))
+        dist = Normal(mu, sigma)
 
         x = F.relu(self.fc2(x))
         val = self.critic(x)
