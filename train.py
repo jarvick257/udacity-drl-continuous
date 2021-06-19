@@ -1,26 +1,25 @@
+import argparse
 import copy
 
 import gym
 import numpy as np
-import matplotlib.pyplot as plt
 
-import torch.multiprocessing as mp
 import torch as T
 from torch.optim import Adam
+import torch.multiprocessing as mp
 
-from model import PPOModel
 from agent import Agent
-from utils import plot_learning_curve
+from model import PPOModel
 
 
-def train(id_, model, device, env, n_games, report_q):
+def train(id_, global_model, device, env, n_games, report_q):
     N = 20
-
-    optim = Adam(model.parameters(), lr=0.0005)
+    optimizer = Adam(global_model.parameters(), lr=0.0005)
     agent = Agent(
-        model=model,
+        n_inputs=env.observation_space.shape[0],
+        n_actions=env.action_space.n,
         device=device,
-        optimizer=optim,
+        optimizer=optimizer,
         sequence_size=5,
         n_epochs=4,
         gamma=0.99,
@@ -35,11 +34,11 @@ def train(id_, model, device, env, n_games, report_q):
         while not done:
             action, prob, val = agent.choose_action(observation)
             observation_, reward, done, info = env.step(action)
+            agent.remember(observation, action, prob, val, reward, done)
             n_steps += 1
             score += reward
-            agent.remember(observation, action, prob, val, reward, done)
-            if n_steps % N == 0:
-                agent.learn()
+            if n_steps % N == 0 or done:
+                agent.learn(global_model)
                 learn_iters += 1
             observation = observation_
         report_q.put((id_, i, score))
@@ -47,37 +46,58 @@ def train(id_, model, device, env, n_games, report_q):
 
 
 if __name__ == "__main__":
+    # CLI Arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--num_workers", "-n", default=mp.cpu_count(), type=int)
+    parser.add_argument("--num_games", "-g", default=1200, type=int)
+    parser.add_argument("--device", "-d", default="cpu", type=str)
+    parser.add_argument("--lr", default=0.0005, type=float)
+    args = parser.parse_args()
+
+    # Env
     env = gym.make("LunarLander-v2")
-    n_games = 1200
-    n_workers = 8
 
-    device = T.device("cpu" if not T.cuda.is_available() else "cuda:0")
+    # Device
+    if args.device != "cpu":
+        assert T.cuda.is_available()
+    device = T.device(args.device)
 
+    # Prepare shared instances
     model = PPOModel(
         n_actions=env.action_space.n,
         n_inputs=env.observation_space.shape[0],
     )
     model.to(device)
     model.share_memory()
-    report_q = mp.Queue()
 
+    # Set up workers
+    report_q = mp.Queue()
     workers = [
         mp.Process(
             target=train,
-            args=(i, model, device, copy.deepcopy(env), n_games // n_workers, report_q),
+            args=(
+                i,
+                model,
+                device,
+                copy.deepcopy(env),
+                args.num_games // args.num_workers,
+                report_q,
+            ),
         )
-        for i in range(n_workers)
+        for i in range(args.num_workers)
     ]
 
+    # Start workers and keep track of progress
     best_score = env.reward_range[0]
     avg_score = 0
     score_history = []
     [w.start() for w in workers]
     total_eps = 0
-    while n_workers > 0:
+    active_workers = args.num_workers
+    while active_workers > 0:
         id_, game, score = report_q.get()
         if id_ is None:
-            n_workers -= 1
+            active_workers -= 1
             continue
         total_eps += 1
         score_history.append(score)
@@ -88,8 +108,14 @@ if __name__ == "__main__":
             model.save_checkpoint()
             saved = " <-"
         print(
-            f"{total_eps}: {id_} - {game} - score {score:0.1f} - avg {avg_score:0.1f}{saved}"
+            f"{total_eps:5d}: {id_:2d} - {game:4d} - score {score:8.1f} - avg {avg_score:8.1f}{saved}"
         )
+
+    # Stop workers
     [w.join() for w in workers]
+
+    # Plot progress (late import because importing matplotlib takes so long)
+    from utils import plot_learning_curve
+
     x = [i + 1 for i in range(len(score_history))]
     plot_learning_curve(x, score_history, "progress.png")

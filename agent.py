@@ -2,12 +2,14 @@ import torch as T
 import numpy as np
 
 from memory import PPOMemory
+from model import PPOModel
 
 
 class Agent:
     def __init__(
         self,
-        model,
+        n_inputs,
+        n_actions,
         optimizer,
         device,
         gamma=0.99,
@@ -22,7 +24,8 @@ class Agent:
         self.n_epochs = n_epochs
 
         self.device = device
-        self.model = model
+        self.model = PPOModel(n_actions=n_actions, n_inputs=n_inputs)
+        self.model.to(self.device)
         self.optim = optimizer
         self.memory = PPOMemory(sequence_size)
 
@@ -39,7 +42,16 @@ class Agent:
         value = T.squeeze(value).item().cpu().numpy()
         return action, action_prob, value
 
-    def learn(self):
+    def sync_model(self, shared_model):
+        self.model.load_state_dict(shared_model.state_dict())
+
+    def share_grads(self, shared_model):
+        for param, shared_param in zip(
+            self.model.parameters(), shared_model.parameters()
+        ):
+            shared_param._grad = param.grad
+
+    def learn(self, shared_model=None):
         (
             state_arr,
             action_arr,
@@ -85,5 +97,9 @@ class Agent:
                 total_loss = actor_loss + 0.5 * critic_loss
                 self.optim.zero_grad()
                 total_loss.backward()
+                if shared_model:
+                    self.share_grads(shared_model)
                 self.optim.step()
+                if shared_model:
+                    self.sync_model(shared_model)
         self.memory.clear_memory()
