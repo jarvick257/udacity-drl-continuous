@@ -8,6 +8,7 @@ from model import PPOModel
 class Agent:
     def __init__(
         self,
+        shared_model,
         n_inputs,
         n_actions,
         optimizer,
@@ -24,6 +25,7 @@ class Agent:
         self.n_epochs = n_epochs
 
         self.device = device
+        self.shared_model = shared_model
         self.model = PPOModel(n_actions=n_actions, n_inputs=n_inputs)
         self.model.to(self.device)
         self.optim = optimizer
@@ -41,16 +43,16 @@ class Agent:
         value = T.squeeze(value).item()
         return action, action_prob, value
 
-    def sync_model(self, shared_model):
-        self.model.load_state_dict(shared_model.state_dict())
+    def sync_model(self):
+        self.model.load_state_dict(self.shared_model.state_dict())
 
-    def share_grads(self, shared_model):
+    def share_grads(self):
         for param, shared_param in zip(
-            self.model.parameters(), shared_model.parameters()
+            self.model.parameters(), self.shared_model.parameters()
         ):
             shared_param._grad = param.grad
 
-    def learn(self, shared_model=None):
+    def learn(self):
         (
             state_arr,
             action_arr,
@@ -94,11 +96,10 @@ class Agent:
                 critic_loss = (returns - critic_value) ** 2
                 critic_loss = critic_loss.mean()
                 total_loss = actor_loss + 0.5 * critic_loss
+
                 self.optim.zero_grad()
                 total_loss.backward()
-                if shared_model:
-                    self.share_grads(shared_model)
+                self.share_grads()
                 self.optim.step()
-                if shared_model:
-                    self.sync_model(shared_model)
+                self.sync_model()
         self.memory.clear_memory()
