@@ -14,12 +14,12 @@ from model import PPOModel
 
 def train(id_, global_model, device, env, n_games, report_q):
     N = 20
-    optimizer = Adam(global_model.parameters(), lr=0.0005)
     agent = Agent(
+        shared_model=global_model,
         n_inputs=env.observation_space.shape[0],
         n_actions=env.action_space.n,
         device=device,
-        optimizer=optimizer,
+        optimizer=Adam(global_model.parameters(), lr=0.0005),
         sequence_size=5,
         n_epochs=4,
         gamma=0.99,
@@ -38,7 +38,7 @@ def train(id_, global_model, device, env, n_games, report_q):
             n_steps += 1
             score += reward
             if n_steps % N == 0 or done:
-                agent.learn(global_model)
+                agent.learn()
                 learn_iters += 1
             observation = observation_
         report_q.put((id_, i, score))
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         score_history.append(score)
         avg_score = np.mean(score_history[-100:])
         saved = ""
-        if avg_score > best_score:
+        if avg_score > best_score and total_eps > 20:
             best_score = avg_score
             model.save_checkpoint()
             saved = " <-"
