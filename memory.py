@@ -1,48 +1,41 @@
 import pdb
+import random
+from collections import deque
+
 import numpy as np
 
 
-class PPOMemory:
-    def __init__(self, sequence_size):
-        self.states = []
-        self.probs = []
-        self.vals = []
-        self.actions = []
-        self.rewards = []
-        self.dones = []
-        self.sequence_size = sequence_size
+class Experience:
+    def __init__(self, state, action, reward, next_state, done):
+        self.state = state
+        self.action = action
+        self.reward = reward
+        self.next_state = next_state
+        self.done = done
 
-    def generate_batches(self):
-        batch_size = len(self.states)
-        num_agents = self.states[0].shape[0]
-        indices = np.arange(batch_size)
-        batches = indices.reshape((-1, self.sequence_size))
-        np.random.shuffle(batches)
-        return (
-            np.array(self.states, dtype=np.float32),
-            np.array(self.actions, dtype=np.float32),
-            np.array(self.probs, dtype=np.float32),
-            np.array(self.vals, dtype=np.float32),
-            np.array(self.rewards, dtype=np.float32),
-            np.array(self.dones, dtype=np.int),
-            batches,
-        )
 
-    def store_memory(self, state, action, probs, vals, reward, done):
-        self.states.append(state)
-        self.actions.append(action)
-        self.probs.append(probs)
-        self.vals.append(vals)
-        self.rewards.append(reward)
-        self.dones.append(done)
+class ReplayBuffer:
+    def __init__(self, buffer_size, seed):
+        self.seed = random.seed
+        self.memory = deque(maxlen=buffer_size)
 
-    def clear_memory(self):
-        self.states = []
-        self.probs = []
-        self.vals = []
-        self.actions = []
-        self.rewards = []
-        self.dones = []
+    def sample(self, batch_size):
+        experiences = random.sample(self.memory, k=batch_size)
+        states = np.vstack([e.state for e in experiences if e is not None])
+        actions = np.vstack([e.action for e in experiences if e is not None])
+        rewards = np.vstack([e.reward for e in experiences if e is not None])
+        next_states = np.vstack([e.next_state for e in experiences if e is not None])
+        dones = np.vstack([e.done for e in experiences if e is not None])
+        return states, actions, rewards, next_states, dones
+
+    def remember(self, state, action, reward, next_state, done):
+        self.memory.append(Experience(state, action, reward, next_state, done))
+
+    def reset(self):
+        self.memory.clear()
+
+    def __len__(self):
+        return len(self.memory)
 
 
 if __name__ == "__main__":

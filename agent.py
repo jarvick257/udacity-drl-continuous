@@ -1,119 +1,104 @@
+import os
 import pdb
+import time
 import torch as T
+import torch.nn.functional as F
 import numpy as np
 from torch.optim import Adam
 
-from memory import PPOMemory
+from memory import ReplayBuffer
+from noise import OUNoise
 from model import Actor, Critic
+
+BUFFER_SIZE = int(1e5)
+BATCH_SIZE = 128
+GAMMA = 0.99
+TAU = 1e-3
+LR_ACTOR = 1e-4
+LR_CRITIC = 1e-3
+WEIGHT_DECAY = 0
 
 
 class Agent:
-    def __init__(
-        self,
-        shared_actor,
-        shared_critic,
-        n_inputs,
-        n_actions,
-        lr=0.0005,
-        gamma=0.99,
-        gae_lambda=0.95,
-        policy_clip=0.2,
-        sequence_size=64,
-        n_epochs=10,
-    ):
-        self.gamma = gamma
-        self.gae_lambda = gae_lambda
-        self.policy_clip = policy_clip
-        self.n_epochs = n_epochs
-
+    def __init__(self, n_inputs, n_actions, random_seed=time.time_ns() % 10000):
         # self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
+        # self.n_inputs = n_inputs
+        # self.n_acitons = n_actions
         self.device = T.device("cpu")
-        self.local_actor = Actor(n_actions=n_actions, n_inputs=n_inputs)
-        self.optim_actor = Adam(self.local_actor.parameters(), lr=lr)
-        self.local_critic = Critic(n_inputs=n_inputs)
-        self.optim_critic = Adam(self.local_critic.parameters(), lr=lr)
-        self.memory = PPOMemory(sequence_size)
-        self.shared_actor = shared_actor
-        self.shared_critic = shared_critic
 
-    def remember(self, state, action, probs, vals, reward, done):
-        self.memory.store_memory(state, action, probs, vals, reward, done)
+        # Actor
+        self.target_actor = Actor(n_inputs, n_actions, random_seed)
+        self.local_actor = Actor(n_inputs, n_actions, random_seed)
+        self.optim_actor = Adam(self.local_actor.parameters(), lr=LR_ACTOR)
 
-    def choose_action(self, observation):
-        state = T.tensor(observation, dtype=T.float).to(self.device)
-        dist = self.local_actor(state)
-        value = self.local_critic(state)
-        action = dist.sample()
-        action_prob = T.sum(dist.log_prob(action)).item()
-        action = action.detach().cpu().numpy()
-        value = T.squeeze(value).item()
-        return action, action_prob, value
+        # Critic
+        self.target_critic = Critic(n_inputs, n_actions, random_seed)
+        self.local_critic = Critic(n_inputs, n_actions, random_seed)
+        self.optim_critic = Adam(self.local_critic.parameters(), lr=LR_CRITIC)
 
-    def sync_model(self):
-        self.local_actor.load_state_dict(self.shared_actor.state_dict())
-        self.local_critic.load_state_dict(self.shared_critic.state_dict())
+        self.memory = ReplayBuffer(BUFFER_SIZE, random_seed)
+        self.noise = OUNoise(n_actions, random_seed)
 
-    def share_grads(self):
-        for param, shared_param in zip(
-            self.local_actor.parameters(), self.shared_actor.parameters()
-        ):
-            shared_param._grad = param.grad
-        for param, shared_param in zip(
-            self.local_critic.parameters(), self.shared_critic.parameters()
-        ):
-            shared_param._grad = param.grad
+    def step(self, state, action, reward, next_state, done):
+        self.memory.remember(state, action, reward, next_state, done)
+        if len(self.memory) > BATCH_SIZE:
+            experiences = self.memory.sample(BATCH_SIZE)
+            self.learn(experiences)
 
-    def learn(self):
-        (
-            state_arr,
-            action_arr,
-            old_prob_arr,
-            val_arr,
-            reward_arr,
-            done_arr,
-            batches,
-        ) = self.memory.generate_batches()
-        values = val_arr
-        advantage = np.zeros(len(reward_arr), dtype=np.float32)
-        for t in range(len(reward_arr) - 1):
-            discount = 1
-            a_t = 0
-            for k in range(t, len(reward_arr) - 1):
-                a_t += discount * (
-                    reward_arr[k]
-                    + self.gamma * values[k + 1] * (1 - done_arr[k])
-                    - values[k]
-                )
-                discount *= self.gamma * self.gae_lambda
-            advantage[t] = a_t
-        advantage = T.tensor(advantage)
-        values = T.tensor(values, dtype=T.float32)
-        # advantage = (advantage - T.mean(advantage)) / T.std(advantage)
-        for epoch in range(self.n_epochs):
-            for batch in batches:
-                states = T.tensor(state_arr[batch]).to(self.device)
-                old_probs = T.tensor(old_prob_arr[batch]).to(self.device)
-                actions = T.tensor(action_arr[batch]).to(self.device)
-                dist = self.local_actor(states)
-                critic_value = self.local_critic(states)
-                critic_value = T.squeeze(critic_value)
-                new_probs = T.sum(dist.log_prob(actions))
-                prob_ratio = new_probs.exp() / old_probs.exp()
-                weighted_probs = prob_ratio * advantage[batch]
-                weighted_clipped_probs = (
-                    T.clamp(prob_ratio, 1 - self.policy_clip, 1 + self.policy_clip)
-                    * advantage[batch]
-                )
-                actor_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
-                returns = advantage[batch] + values[batch]
-                critic_loss = (returns - critic_value) ** 2
-                critic_loss = critic_loss.mean()
-                total_loss = actor_loss + 0.5 * critic_loss
-                self.optim_actor.zero_grad()
-                self.optim_critic.zero_grad()
-                total_loss.backward()
-                self.share_grads()
-                self.optim_actor.step()
-                self.optim_critic.step()
-                self.sync_model()
-        self.memory.clear_memory()
+    def act(self, state, add_noise=True):
+        state = T.from_numpy(state).float().to(self.device)
+        self.local_actor.eval()
+        with T.no_grad():
+            action = self.local_actor(state).cpu().data.numpy()
+        self.local_actor.train()
+        if add_noise:
+            action += self.noise.sample()
+        return np.clip(action, -1, 1)
+
+    def save_checkpoint(self, path):
+        print("Saving checkpoint...")
+        self.local_actor.save_checkpoint(os.path.join(path, "actor.pth"))
+        self.local_critic.save_checkpoint(os.path.join(path, "critic.pth"))
+
+    def load_checkpoint(self, path):
+        print("Loading checkpoint...")
+        self.local_actor.load_checkpoint(os.path.join(path, "actor.pth"))
+        self.local_critic.load_checkpoint(os.path.join(path, "critic.pth"))
+
+    def reset(self):
+        self.noise.reset()
+
+    def learn(self, experiences, gamma=GAMMA):
+        states, actions, rewards, next_states, dones = experiences
+        states = T.tensor(states, dtype=T.float).to(self.device)
+        actions = T.tensor(actions, dtype=T.float).to(self.device)
+        rewards = T.tensor(rewards, dtype=T.float).to(self.device)
+        next_states = T.tensor(next_states, dtype=T.float).to(self.device)
+        dones = T.tensor(dones, dtype=T.uint8).to(self.device)
+
+        actione_next = self.target_actor(next_states)
+        Q_targets_next = self.target_critic(next_states, actione_next)
+
+        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
+
+        Q_expected = self.local_critic(states, actions)
+        critic_loss = F.mse_loss(Q_expected, Q_targets)
+
+        self.optim_critic.zero_grad()
+        critic_loss.backward()
+        self.optim_critic.step()
+
+        actions_pred = self.local_actor(states)
+        actor_loss = -self.local_critic(states, actions_pred).mean()
+        self.optim_actor.zero_grad()
+        actor_loss.backward()
+        self.optim_actor.step()
+
+        self.soft_update(self.local_critic, self.target_critic)
+        self.soft_update(self.local_actor, self.target_actor)
+
+    def soft_update(self, local, target, tau=TAU):
+        for target_param, local_param in zip(target.parameters(), local.parameters()):
+            target_param.data.copy_(
+                tau * local_param.data + (1.0 - tau) * target_param.data
+            )
