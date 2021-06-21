@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 
 
@@ -12,17 +13,19 @@ class PPOMemory:
         self.sequence_size = sequence_size
 
     def generate_batches(self):
-        n_sequences = len(self.states) // self.sequence_size
-        indices = np.arange(n_sequences * self.sequence_size, dtype=np.int64)
-        sequences = indices.reshape([-1, self.sequence_size])
+        batch_size = len(self.states)
+        num_agents = self.states[0].shape[0]
+        indices = np.arange(batch_size)
+        batches = indices.reshape((-1, self.sequence_size))
+        np.random.shuffle(batches)
         return (
-            np.array(self.states),
-            np.array(self.actions),
-            np.array(self.probs),
-            np.array(self.vals),
-            np.array(self.rewards),
-            np.array(self.dones),
-            sequences,
+            np.array(self.states, dtype=np.float32),
+            np.array(self.actions, dtype=np.float32),
+            np.array(self.probs, dtype=np.float32),
+            np.array(self.vals, dtype=np.float32),
+            np.array(self.rewards, dtype=np.float32),
+            np.array(self.dones, dtype=np.int),
+            batches,
         )
 
     def store_memory(self, state, action, probs, vals, reward, done):
