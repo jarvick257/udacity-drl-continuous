@@ -1,4 +1,3 @@
-import pdb
 import random
 from collections import deque
 
@@ -28,25 +27,14 @@ class ReplayBuffer:
         dones = np.vstack([e.done for e in experiences if e is not None])
         return states, actions, rewards, next_states, dones
 
-    def remember(self, state, action, reward, next_state, done):
-        self.memory.append(Experience(state, action, reward, next_state, done))
+    def remember(self, states, actions, rewards, next_states, dones):
+        for i in range(states.shape[0]):
+            self.memory.append(
+                Experience(states[i], actions[i], rewards[i], next_states[i], dones[i])
+            )
 
     def reset(self):
         self.memory.clear()
 
     def __len__(self):
         return len(self.memory)
-
-
-if __name__ == "__main__":
-    import pdb
-    from unityagents import UnityEnvironment
-
-    env = UnityEnvironment("./Reacher_Linux/Reacher.x86_64")
-    brain_name = env.brain_names[0]
-    brain = env.brains[brain_name]
-    states = []
-    for i in range(10):
-        env_info = env.reset(train_mode=True)[brain_name]
-        states.append(env_info.vector_observations)
-    pdb.set_trace()

@@ -9,7 +9,7 @@ from utils import plot_learning_curve
 seed = 123
 num_games = 1000
 
-env = UnityEnvironment("Reacher_Linux_single/Reacher.x86_64")
+env = UnityEnvironment("Reacher_Linux_multi/Reacher.x86_64")
 brain_name = env.brain_names[0]
 brain = env.brains[brain_name]
 
@@ -18,7 +18,12 @@ num_agents = len(env_info.agents)
 num_actions = brain.vector_action_space_size
 num_inputs = env_info.vector_observations.shape[1]
 
-agent = Agent(n_inputs=num_inputs, n_actions=num_actions, random_seed=seed)
+agent = Agent(
+    n_inputs=num_inputs,
+    n_actions=num_actions,
+    n_agents=num_agents,
+    random_seed=seed,
+)
 
 scores = []
 avg_over_30 = 0
@@ -29,20 +34,21 @@ try:
         game += 1
         score = 0
         t = 0
-        done = False
+        dones = [False] * num_agents
         env_info = env.reset(train_mode=True)[brain_name]
-        state = env_info.vector_observations
+        states = env_info.vector_observations
         agent.reset()
-        while not done:
-            action = agent.act(state, add_noise=True)
+        while not np.any(dones):
+            action = agent.act(states, add_noise=True)
             env_info = env.step(action)[brain_name]
-            state_ = env_info.vector_observations
-            reward = env_info.rewards[0]
-            done = env_info.local_done[0]
-            agent.step(state, action, reward, state_, done)
-            state = state_
-            score += reward
+            states_ = env_info.vector_observations
+            rewards = env_info.rewards
+            dones = env_info.local_done
+            agent.step(states, action, rewards, states_, dones)
+            states = states_
+            score += np.mean(rewards)
             t += 1
+            print(t, end='\r')
         scores.append(score)
         avg_score = np.mean(scores[-100:])
         if avg_score >= 30.0:

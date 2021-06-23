@@ -1,15 +1,13 @@
-import random
-import copy
 import numpy as np
 
 
 class OUNoise:
-    def __init__(self, size, seed, mu=0.0, theta=0.01, theta_incr=0.01, sigma=0.001):
-        self.mu = mu * np.ones(size)
+    def __init__(self, shape, seed, mu=0.0, theta=0.01, theta_incr=0.01, sigma=0.001):
+        self.mu = mu * np.ones(shape)
         self.theta_incr = theta_incr
         self.theta = theta
         self.sigma = sigma
-        self.seed = random.seed(seed)
+        self.seed = np.random.seed(seed)
         self.reset(incr_theta=False)
 
     def reset(self, incr_theta=True):
@@ -22,8 +20,8 @@ class OUNoise:
     def sample(self):
         self.i += 1
         x = self.state
-        dx = self.theta * (self.mu - x) + self.sigma * np.array(
-            [(2 * random.random()) - 1 for _ in range(len(x))]
+        dx = self.theta * (self.mu - x) + self.sigma * (
+            2 * np.random.random(self.state.shape) - 1
         )
         self.state = x + dx
         return self.state

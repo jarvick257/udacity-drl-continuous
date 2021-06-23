@@ -19,33 +19,36 @@ LR_CRITIC = 0.0005
 
 
 class Agent:
-    def __init__(self, n_inputs, n_actions, random_seed):
+    def __init__(self, n_inputs, n_actions, n_agents, random_seed):
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
         # Actor
-        self.target_actor = Actor(n_inputs, n_actions, random_seed)
-        self.local_actor = Actor(n_inputs, n_actions, random_seed)
+        self.target_actor = Actor(n_inputs, n_actions, random_seed).to(self.device)
+        self.local_actor = Actor(n_inputs, n_actions, random_seed).to(self.device)
         self.optim_actor = Adam(self.local_actor.parameters(), lr=LR_ACTOR)
 
         # Critic
-        self.target_critic = Critic(n_inputs, n_actions, random_seed)
-        self.local_critic = Critic(n_inputs, n_actions, random_seed)
+        self.target_critic = Critic(n_inputs, n_actions, random_seed).to(self.device)
+        self.local_critic = Critic(n_inputs, n_actions, random_seed).to(self.device)
         self.optim_critic = Adam(self.local_critic.parameters(), lr=LR_CRITIC)
 
         self.memory = ReplayBuffer(BUFFER_SIZE, random_seed)
-        self.noise = OUNoise(n_actions, random_seed)
+        self.noise = OUNoise((n_agents, n_actions), random_seed)
+        self.num_steps = 0
 
-    def step(self, state, action, reward, next_state, done):
-        self.memory.remember(state, action, reward, next_state, done)
-        if len(self.memory) > BATCH_SIZE:
-            experiences = self.memory.sample(BATCH_SIZE)
-            self.learn(experiences)
+    def step(self, states, actions, rewards, next_states, dones):
+        self.num_steps += 1
+        self.memory.remember(states, actions, rewards, next_states, dones)
+        if len(self.memory) > BATCH_SIZE and self.num_steps % 10 == 0:
+            for _ in range(states.shape[0]):
+                experiences = self.memory.sample(BATCH_SIZE)
+                self.learn(experiences)
 
-    def act(self, state, add_noise=True):
-        state = T.from_numpy(state).float().to(self.device)
+    def act(self, states, add_noise=True):
+        states = T.from_numpy(states).float().to(self.device)
         self.local_actor.eval()
         with T.no_grad():
-            action = self.local_actor(state).cpu().data.numpy()
+            action = self.local_actor(states).cpu().data.numpy()
         self.local_actor.train()
         if add_noise:
             action += self.noise.sample()
