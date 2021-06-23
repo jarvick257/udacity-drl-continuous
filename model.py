@@ -17,9 +17,9 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         self.seed = T.manual_seed(seed)
 
-        self.fc1 = nn.Linear(n_inputs, 400)
-        self.fc2 = nn.Linear(400, 300)
-        self.fc3 = nn.Linear(300, n_actions)
+        self.fc1 = nn.Linear(n_inputs, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, n_actions)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -30,7 +30,7 @@ class Actor(nn.Module):
     def forward(self, state):
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
-        return F.tanh(self.fc3(x))
+        return F.softsign(self.fc3(x))
 
     def save_checkpoint(self, path):
         T.save(self.state_dict(), path)
@@ -44,12 +44,13 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.seed = T.manual_seed(seed)
 
-        self.fcs1 = nn.Linear(n_inputs, 400)
-        self.fc2 = nn.Linear(400 + n_actions, 300)
-        self.fc3 = nn.Linear(300, 1)
+        self.fcs1 = nn.Linear(n_inputs, 256)
+        self.fc2 = nn.Linear(256 + n_actions, 128)
+        self.fc3 = nn.Linear(128, 1)
+        self.reset_parameters()
 
     def reset_parameters(self):
-        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
+        self.fcs1.weight.data.uniform_(*hidden_init(self.fcs1))
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
         self.fc3.weight.data.uniform_(-3e-3, 3e-3)
 

@@ -12,19 +12,15 @@ from model import Actor, Critic
 
 BUFFER_SIZE = int(1e5)
 BATCH_SIZE = 128
-GAMMA = 0.99
+GAMMA = 0.90
 TAU = 1e-3
-LR_ACTOR = 1e-4
-LR_CRITIC = 1e-3
-WEIGHT_DECAY = 0
+LR_ACTOR = 0.0001
+LR_CRITIC = 0.0005
 
 
 class Agent:
-    def __init__(self, n_inputs, n_actions, random_seed=time.time_ns() % 10000):
-        # self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
-        # self.n_inputs = n_inputs
-        # self.n_acitons = n_actions
-        self.device = T.device("cpu")
+    def __init__(self, n_inputs, n_actions, random_seed):
+        self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
         # Actor
         self.target_actor = Actor(n_inputs, n_actions, random_seed)
@@ -74,10 +70,10 @@ class Agent:
         actions = T.tensor(actions, dtype=T.float).to(self.device)
         rewards = T.tensor(rewards, dtype=T.float).to(self.device)
         next_states = T.tensor(next_states, dtype=T.float).to(self.device)
-        dones = T.tensor(dones, dtype=T.uint8).to(self.device)
+        dones = T.tensor(dones.astype(np.float32)).to(self.device)
 
-        actione_next = self.target_actor(next_states)
-        Q_targets_next = self.target_critic(next_states, actione_next)
+        action_next = self.target_actor(next_states)
+        Q_targets_next = self.target_critic(next_states, action_next)
 
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
 
