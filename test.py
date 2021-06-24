@@ -13,7 +13,12 @@ num_actions = brain.vector_action_space_size
 num_inputs = env_info.vector_observations.shape[1]
 
 seed = int(time.time() * 1000 % 1000)
-agent = Agent(n_inputs=num_inputs, n_actions=num_actions, random_seed=seed)
+agent = Agent(
+    n_inputs=num_inputs,
+    n_actions=num_actions,
+    n_agents=num_agents,
+    random_seed=seed,
+)
 agent.load_checkpoint(sys.argv[1])
 
 for i in range(10):

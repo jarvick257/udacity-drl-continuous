@@ -11,11 +11,11 @@ from noise import OUNoise
 from model import Actor, Critic
 
 BUFFER_SIZE = int(1e5)
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 GAMMA = 0.90
-TAU = 1e-3
+TAU = 1e-2
 LR_ACTOR = 0.0001
-LR_CRITIC = 0.0005
+LR_CRITIC = 0.0001
 
 
 class Agent:

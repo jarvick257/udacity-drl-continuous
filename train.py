@@ -50,19 +50,19 @@ try:
             t += 1
             print(t, end='\r')
         scores.append(score)
-        avg_score = np.mean(scores[-100:])
-        if avg_score >= 30.0:
+        if score > 30.0:
             avg_over_30 += 1
         else:
             avg_over_30 = 0
         print(
-            f"Eps {game:5d}: theta: {agent.noise.theta:0.2f}, score {score:6.2f}, avg {avg_score:6.2f}, num over 30: {avg_over_30}"
+            f"Eps {game:5d}: theta: {agent.noise.theta:0.2f}, score {score:6.2f}, num over 30: {avg_over_30}"
         )
-        if avg_score > best_score and game > 10:
+        avg = np.mean(scores[-10:]) 
+        if avg > best_score and game > 10:
             agent.save_checkpoint("tmp")
-            best_score = avg_score
+            best_score = avg
 except KeyboardInterrupt:
     pass
 
 env.close()
-plot_learning_curve(np.arange(len(scores)), scores, "tmp/progress.png")
+plot_learning_curve(scores, "tmp/progress.png", 'Average score over all agents')
