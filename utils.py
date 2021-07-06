@@ -1,11 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_learning_curve(scores, figure_file, title):
-    x = np.arange(len(scores))
-    running_avg = np.zeros(len(scores))
-    for i in range(len(running_avg)):
-        running_avg[i] = np.mean(scores[max(0, i-100):(i+1)])
-    plt.plot(x, running_avg)
-    plt.title(title)
+
+def plot_learning_curve(x, scores, thetas, figure_file, title):
+    fig, ax1 = plt.subplots()
+
+    ax1.set_title(title)
+    ax1.set_xlabel("step")
+    ax1.plot(x, scores, "b")
+    ax1.set_ylabel("Score", color="b")
+    ax1.tick_params("y", colors="b")
+
+    ax2 = ax1.twinx()
+    ax2.plot(x, thetas, "r")
+    ax2.set_ylabel("Theta", color="r")
+    ax2.tick_params("y", colors="r")
     plt.savefig(figure_file)

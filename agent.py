@@ -61,8 +61,12 @@ class Agent:
 
     def load_checkpoint(self, path):
         print("Loading checkpoint...")
-        self.local_actor.load_checkpoint(os.path.join(path, "actor.pth"))
-        self.local_critic.load_checkpoint(os.path.join(path, "critic.pth"))
+        self.local_actor.load_checkpoint(
+            os.path.join(path, "actor.pth"), device=self.device
+        )
+        self.local_critic.load_checkpoint(
+            os.path.join(path, "critic.pth"), device=self.device
+        )
 
     def reset(self):
         self.noise.reset()

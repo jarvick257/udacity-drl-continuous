@@ -35,8 +35,8 @@ class Actor(nn.Module):
     def save_checkpoint(self, path):
         T.save(self.state_dict(), path)
 
-    def load_checkpoint(self, path):
-        self.load_state_dict(T.load(path))
+    def load_checkpoint(self, path, device=T.device("cpu")):
+        self.load_state_dict(T.load(path, map_location=device))
 
 
 class Critic(nn.Module):
@@ -63,5 +63,5 @@ class Critic(nn.Module):
     def save_checkpoint(self, path):
         T.save(self.state_dict(), path)
 
-    def load_checkpoint(self, path):
-        self.load_state_dict(T.load(path))
+    def load_checkpoint(self, path, device=T.device("cpu")):
+        self.load_state_dict(T.load(path, map_location=device))

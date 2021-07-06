@@ -26,6 +26,7 @@ agent = Agent(
 )
 
 scores = []
+thetas = []
 avg_over_30 = 0
 best_score = -np.inf
 game = 0
@@ -48,21 +49,24 @@ try:
             states = states_
             score += np.mean(rewards)
             t += 1
-            print(t, end='\r')
+            print(t, end="\r")
         scores.append(score)
+        thetas.append(agent.noise.theta)
         if score > 30.0:
             avg_over_30 += 1
         else:
             avg_over_30 = 0
         print(
-            f"Eps {game:5d}: theta: {agent.noise.theta:0.2f}, score {score:6.2f}, num over 30: {avg_over_30}"
+            f"Eps {game:5d}: theta: {agent.noise.theta:0.2f}, score {score:6.2f}, games over 30: {avg_over_30}"
         )
-        avg = np.mean(scores[-10:]) 
+        avg = np.mean(scores[-10:])
         if avg > best_score and game > 10:
-            agent.save_checkpoint("tmp")
+            agent.save_checkpoint("checkpoints")
             best_score = avg
 except KeyboardInterrupt:
     pass
 
 env.close()
-plot_learning_curve(scores, "tmp/progress.png", 'Average score over all agents')
+plot_learning_curve(
+    scores, thetas, "checkpoints/progress.png", "Learning Progess (Avg over agents)"
+)
