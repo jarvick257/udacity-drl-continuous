@@ -2,12 +2,15 @@ import numpy as np
 
 
 class OUNoise:
-    def __init__(self, shape, seed, mu=0.0, theta=0.01, theta_incr=0.01, sigma=0.001):
+    def __init__(
+        self, shape, seed=None, mu=0.0, theta=0.01, theta_incr=0.01, sigma=0.001
+    ):
         self.mu = mu * np.ones(shape)
         self.theta_incr = theta_incr
         self.theta = theta
         self.sigma = sigma
-        self.seed = np.random.seed(seed)
+        if seed:
+            self.seed = np.random.seed(seed)
         self.reset(incr_theta=False)
 
     def reset(self, incr_theta=True):
@@ -25,3 +28,25 @@ class OUNoise:
         )
         self.state = x + dx
         return self.state
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    noise = OUNoise(1, sigma=0.01, theta=0.10)
+    x = np.arange(50)
+    y1 = [noise.sample() for _ in x]
+    noise = OUNoise(1, sigma=0.01, theta=0.5)
+    y2 = [noise.sample() for _ in x]
+    noise = OUNoise(1, sigma=0.01, theta=0.90)
+    noise.theta = 0.95
+    y3 = [noise.sample() for _ in x]
+
+    plt.plot(x, y1, "r", label="theta=0.10")
+    plt.plot(x, y2, "g", label="theta=0.50")
+    plt.plot(x, y3, "b", label="theta=0.90")
+    plt.legend()
+    plt.title("Effects of increasing theta on OUNoise (mu=0, sigma=0.01)")
+    plt.ylabel("Noise")
+    plt.xlabel("Step")
+    plt.show()

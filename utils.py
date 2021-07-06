@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_learning_curve(x, scores, thetas, figure_file, title):
+def plot_learning_curve(scores, thetas, figure_file, title):
+    x = np.arange(len(scores))
     fig, ax1 = plt.subplots()
 
     ax1.set_title(title)
