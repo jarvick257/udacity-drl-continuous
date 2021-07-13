@@ -9,6 +9,9 @@ As input, the arm accepts 4 values between -1 and 1 where each value represents 
 
 ### Setup
 The setup for this repo is almost identical to https://github.com/udacity/deep-reinforcement-learning#dependencies so make sure to follow the installation instructions there.  \
+For training, the multi-agent environment is expected to be located at `<git root>/Reacher_Linux_multi`
+For testing, the single-agent environment is expected to be located at `<git root>/Reacher_Linux_single`
+
 If you wish to run with one of the pretrained models from the checkpoint folder, torch must be upgraded to a newer version:
 ``` bash
 pip3 install --upgrade torch
@@ -20,7 +23,6 @@ Furthermore, there is a Dockerfile in this repo with which it is possible to uti
 In order to train the model, adjust the hyperparameters in `agent.py` to your liking, then simply execute
 ```
 python3 train.py
-```
 
 ### Testing
 To test your trained models, you can execute `test.py`. The script expects the folder in which the model files a stored as input. Eg:

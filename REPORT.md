@@ -7,6 +7,7 @@ This file implements the DDGP Agent. DDGP is a actor-critic reinforcement learni
 The agent class holds the Actor and Critic models and implements functions for choosing an action for a given state, training the actor and critic models as well as loading and saving checkpoints. \
 For the size of the replay buffer, batch size, learning rates and the soft-update ratio tau common default values were chosen with 100k, 256, 0.0001 and 0.01, respectively. \
 At 0.9, the reward discount value gamma was set to a relitively small value because the task is rather static with a constant flow of rewards that does not rely on extensive setup.\
+The best results were achieved when iterating between 10 steps of collecting new experiences followed by 20 consecutive steps of learning.
 
 ### memory.py
 The ReplayBuffer class is defined in this file. It is little more than a larger FiFo buffer that can be sampled for past experiences.
