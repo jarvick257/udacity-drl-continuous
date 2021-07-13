@@ -7,7 +7,6 @@ from agent import Agent
 from utils import plot_learning_curve
 
 seed = 123
-num_games = 1000
 
 env = UnityEnvironment("Reacher_Linux_multi/Reacher.x86_64")
 brain_name = env.brain_names[0]

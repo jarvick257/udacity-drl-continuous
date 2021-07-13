@@ -7,7 +7,7 @@ def plot_learning_curve(scores, thetas, figure_file, title):
     fig, ax1 = plt.subplots()
 
     ax1.set_title(title)
-    ax1.set_xlabel("step")
+    ax1.set_xlabel("Epoch")
     ax1.plot(x, scores, "b")
     ax1.set_ylabel("Score", color="b")
     ax1.tick_params("y", colors="b")

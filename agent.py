@@ -12,6 +12,7 @@ from model import Actor, Critic
 
 BUFFER_SIZE = int(1e5)
 BATCH_SIZE = 256
+LEARN_EVERY = 10
 GAMMA = 0.90
 TAU = 1e-2
 LR_ACTOR = 0.0001
@@ -39,7 +40,7 @@ class Agent:
     def step(self, states, actions, rewards, next_states, dones):
         self.num_steps += 1
         self.memory.remember(states, actions, rewards, next_states, dones)
-        if len(self.memory) > BATCH_SIZE and self.num_steps % 10 == 0:
+        if len(self.memory) > BATCH_SIZE and self.num_steps % LEARN_EVERY == 0:
             for _ in range(states.shape[0]):
                 experiences = self.memory.sample(BATCH_SIZE)
                 self.learn(experiences)
