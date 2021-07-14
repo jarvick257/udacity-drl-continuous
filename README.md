@@ -1,7 +1,7 @@
 ![Trained Agent](checkpoints/trained_model.gif)
 
 # Project 2: 
-This is my solution for Project 2 - Continuous Control of Udacity's Deep Reinforcement Learning nanodegree.
+This is my solution for the mutli-agent version of Project 2 - Continuous Control of Udacity's Deep Reinforcement Learning nanodegree.
 
 ### Project Description
 The goal is to control a double-jointed robtic arm so that its 'hand' is in constant contact with a moving target zone. For every frame that the arm touches the target zone, a reward of 0.1 is given.\
@@ -30,12 +30,17 @@ To test your trained models, you can execute `test.py`. The script expects the f
 python3 test.py checkpoint
 ```
 
+### Result
+During the first 10 to 20 epochs of training, the agent achieved almost exponential progress and reached the target value of 30 after epoch 20. It continued to improve its score up until around epoch 30 to a value of around 37 to 39 where it stayed for the remainder of the training. \
+Therefore it is safe to say, that the agent solved the environment after 20 epochs.
+
+![progress](checkpoints/progress.png)
+
+
 ### Implementation Details
 I solved the problem using the Deep Deterministic Policy Gradients (DDPG) algorithm.
 See the [report](REPORT.md) for a detailed description of the implementation and design choices.
 
 ### Artifacts
 Trained models are stored in the checkpoints folder, together with an image of their training progress as seen below.
-
-![progress](checkpoints/progress.png)
 
