@@ -5,7 +5,8 @@ This is my solution for the mutli-agent version of Project 2 - Continuous Contro
 
 ### Project Description
 The goal is to control a double-jointed robtic arm so that its 'hand' is in constant contact with a moving target zone. For every frame that the arm touches the target zone, a reward of 0.1 is given.\
-As input, the arm accepts 4 values between -1 and 1 where each value represents the amount of torque that should be applied to one of its four joints. The obervation space consists of 33 variables that describe the current position, rotation, velocity and angular velocity of the arm. 
+As input, the arm accepts 4 values between -1 and 1 where each value represents the amount of torque that should be applied to one of its four joints. The obervation space consists of 33 variables that describe the current position, rotation, velocity and angular velocity of the arm. \
+The given implementation is able to solve the environment after about 20 epochs of training.
 
 ### Setup
 The setup for this repo is almost identical to https://github.com/udacity/deep-reinforcement-learning#dependencies so make sure to follow the installation instructions there.  \
@@ -32,7 +33,6 @@ python3 test.py checkpoint
 
 ### Result
 During the first 10 to 20 epochs of training, the agent achieved almost exponential progress and reached the target value of 30 after epoch 20. It continued to improve its score up until around epoch 30 to a value of around 37 to 39 where it stayed for the remainder of the training. \
-Therefore it is safe to say, that the agent solved the environment after 20 epochs.
 
 ![progress](checkpoints/progress.png)
 
