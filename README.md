@@ -5,7 +5,8 @@ This is my solution for the mutli-agent version of Project 2 - Continuous Contro
 
 ### Project Description
 The goal is to control a double-jointed robtic arm so that its 'hand' is in constant contact with a moving target zone. For every frame that the arm touches the target zone, a reward of 0.1 is given.\
-As input, the arm accepts 4 values between -1 and 1 where each value represents the amount of torque that should be applied to one of its four joints. The obervation space consists of 33 variables that describe the current position, rotation, velocity and angular velocity of the arm. 
+As input, the arm accepts 4 values between -1 and 1 where each value represents the amount of torque that should be applied to one of its four joints. The obervation space consists of 33 variables that describe the current position, rotation, velocity and angular velocity of the arm.  \
+The project is considered solved, if average score over 100 episodes exceeds 30. In case of mulitple agents, the score if an episode is considered the average over all agents during that episode. (I deviated slightly from this criteria, which is described in the 'train.py' section in REPORT.md)
 
 ### Setup
 The setup for this repo is almost identical to https://github.com/udacity/deep-reinforcement-learning#dependencies so make sure to follow the installation instructions there.  \
